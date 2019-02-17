@@ -29,16 +29,36 @@ namespace SteamAuth
         public ulong Creator;
 
         /// <summary>
+        /// A brief description of the trade. ([item] to [person]) 
+        /// </summary>
+        public string Description;
+
+        /// <summary>
+        /// Items the user will be receiving
+        /// </summary>
+        public string Receiving;
+
+        /// <summary>
+        /// The 'time' the request came in (as displayed on the web page)
+        /// </summary>
+        public string Time;
+
+
+
+        /// <summary>
         /// The type of this confirmation.
         /// </summary>
         public ConfirmationType ConfType;
         
-        public Confirmation(ulong id, ulong key, int type, ulong creator)
+        public Confirmation(ulong id, ulong key, int type, ulong creator, string description, string receiving, string time)
         {
             this.ID = id;
             this.Key = key;
             this.IntType = type;
             this.Creator = creator;
+            this.Description = description;
+            this.Receiving = receiving;
+            this.Time = time;
 
             //Do a switch simply because we're not 100% certain of all the possible types.
             switch (type)

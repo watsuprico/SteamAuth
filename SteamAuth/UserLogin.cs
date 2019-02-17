@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Specialized;
 using System.Net;
+using System.Runtime.InteropServices;
+using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -14,7 +16,7 @@ namespace SteamAuth
     public class UserLogin
     {
         public string Username;
-        public string Password;
+        public SecureString Password;
         public ulong SteamID;
 
         public bool RequiresCaptcha;
@@ -33,7 +35,7 @@ namespace SteamAuth
 
         private CookieContainer _cookies = new CookieContainer();
 
-        public UserLogin(string username, string password)
+        public UserLogin(string username, System.Security.SecureString password)
         {
             this.Username = username;
             this.Password = password;
@@ -72,11 +74,31 @@ namespace SteamAuth
 
             Thread.Sleep(350); //Sleep for a bit to give Steam a chance to catch up??
 
+            /*RNGCryptoServiceProvider secureRandom = new RNGCryptoServiceProvider();
+            byte[] encryptedPasswordBytes;
+            using (var rsaEncryptor = new RSACryptoServiceProvider())
+            {
+                var passwordBytes = new byte[0];
+                using (var ssb = new SecureStringBytes(Password))
+                {
+                    passwordBytes = ssb.GetBytes();
+                }
+                var rsaParameters = rsaEncryptor.ExportParameters(false);
+                rsaParameters.Exponent = Util.HexStringToByteArray(rsaResponse.Exponent);
+                rsaParameters.Modulus = Util.HexStringToByteArray(rsaResponse.Modulus);
+                rsaEncryptor.ImportParameters(rsaParameters);
+                encryptedPasswordBytes = rsaEncryptor.Encrypt(passwordBytes, false);
+            }
+
+            string encryptedPassword = Convert.ToBase64String(encryptedPasswordBytes);*/
+
             RNGCryptoServiceProvider secureRandom = new RNGCryptoServiceProvider();
             byte[] encryptedPasswordBytes;
             using (var rsaEncryptor = new RSACryptoServiceProvider())
             {
-                var passwordBytes = Encoding.ASCII.GetBytes(this.Password);
+                IntPtr unsecure = Marshal.SecureStringToGlobalAllocUnicode(Password);
+                string UnsecurePassword = Marshal.PtrToStringUni(unsecure);
+                var passwordBytes = Encoding.ASCII.GetBytes(UnsecurePassword);
                 var rsaParameters = rsaEncryptor.ExportParameters(false);
                 rsaParameters.Exponent = Util.HexStringToByteArray(rsaResponse.Exponent);
                 rsaParameters.Modulus = Util.HexStringToByteArray(rsaResponse.Modulus);
@@ -85,6 +107,7 @@ namespace SteamAuth
             }
 
             string encryptedPassword = Convert.ToBase64String(encryptedPasswordBytes);
+            GC.Collect(); // security at its finest
 
             postData.Clear();
             postData.Add("donotcache", (TimeAligner.GetSteamTime() * 1000).ToString());
@@ -250,5 +273,66 @@ namespace SteamAuth
         Need2FA,
         NeedEmail,
         TooManyFailedLogins,
+    }
+}
+
+
+public sealed class SecureStringBytes : IDisposable
+{
+    private SecureString secureString;
+    private byte[] bytes;
+
+    public SecureStringBytes(SecureString secureString)
+    {
+        this.secureString = secureString ?? throw new ArgumentNullException("secureString");
+    }
+
+    public void Clear()
+    {
+        if (bytes != null)
+        {
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = 0;
+            }
+            bytes = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        Clear();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+    }
+
+    public byte[] GetBytes()
+    {
+        if (bytes == null)
+        {
+            bytes = ConvertSecureStringToBytes(secureString);
+        }
+        return bytes;
+    }
+
+    private static byte[] ConvertSecureStringToBytes(SecureString secureString)
+    {
+        var result = new byte[secureString.Length * 2];
+        IntPtr valuePtr = IntPtr.Zero;
+        try
+        {
+            valuePtr = Marshal.SecureStringToGlobalAllocUnicode(secureString);
+            for (int i = 0; i < secureString.Length; i++)
+            {
+                result[i] = Marshal.ReadByte(valuePtr, i * 2);
+                result[i + 1] = Marshal.ReadByte(valuePtr, i * 2 + 1);
+            }
+        }
+        finally
+        {
+            Marshal.ZeroFreeGlobalAllocUnicode(valuePtr);
+        }
+
+        return result;
     }
 }

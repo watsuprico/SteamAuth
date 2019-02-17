@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace SteamAuth
 {
@@ -138,6 +139,7 @@ namespace SteamAuth
               I'm sorry. */
 
             Regex confRegex = new Regex("<div class=\"mobileconf_list_entry\" id=\"conf[0-9]+\" data-confid=\"(\\d+)\" data-key=\"(\\d+)\" data-type=\"(\\d+)\" data-creator=\"(\\d+)\"");
+            Regex confDescriptions = new Regex("<div class=\"mobileconf_list_entry_description\">\r\n\t\t\t<div>(.+)</div>\r\n\t\t\t<div>(.+)</div>\r\n\t\t\t<div>(.+)</div>");
 
             if (response == null || !confRegex.IsMatch(response))
             {
@@ -151,20 +153,29 @@ namespace SteamAuth
 
             MatchCollection confirmations = confRegex.Matches(response);
 
-            List<Confirmation> ret = new List<Confirmation>();
-            foreach (Match confirmation in confirmations)
-            {
-                if (confirmation.Groups.Count != 5) continue;
+            MatchCollection confirmationsDesc = confDescriptions.Matches(response);
 
-                if (!ulong.TryParse(confirmation.Groups[1].Value, out ulong confID) ||
-                    !ulong.TryParse(confirmation.Groups[2].Value, out ulong confKey) ||
-                    !int.TryParse(confirmation.Groups[3].Value, out int confType) ||
-                    !ulong.TryParse(confirmation.Groups[4].Value, out ulong confCreator))
+            List<Confirmation> ret = new List<Confirmation>();
+            for (int i=0; i < confirmationsDesc.Count; i++)
+            {
+                if (confirmations[i].Groups.Count != 5) continue;
+                if (confirmationsDesc[i].Groups.Count != 4) continue;
+
+                if (!ulong.TryParse(confirmations[i].Groups[1].Value, out ulong confID) ||
+                    !ulong.TryParse(confirmations[i].Groups[2].Value, out ulong confKey) ||
+                    !int.TryParse(confirmations[i].Groups[3].Value, out int confType) ||
+                    !ulong.TryParse(confirmations[i].Groups[4].Value, out ulong confCreator))
                 {
                     continue;
                 }
 
-                ret.Add(new Confirmation(confID, confKey, confType, confCreator));
+                string confDescription = confirmationsDesc[i].Groups[1].Value;
+                string confReceiving = confirmationsDesc[i].Groups[2].Value;
+                string confTime = confirmationsDesc[i].Groups[3].Value;
+
+
+                ret.Add(new Confirmation(confID, confKey, confType, confCreator, confDescription, confReceiving, confTime));
+
             }
 
             return ret.ToArray();
@@ -185,6 +196,7 @@ namespace SteamAuth
                           I'm sorry. */
 
             Regex confRegex = new Regex("<div class=\"mobileconf_list_entry\" id=\"conf[0-9]+\" data-confid=\"(\\d+)\" data-key=\"(\\d+)\" data-type=\"(\\d+)\" data-creator=\"(\\d+)\"");
+            Regex confDescriptions = new Regex("<div class=\"mobileconf_list_entry_description\">\r\n\t\t\t<div>(.+)</div>\r\n\t\t\t<div>(.+)</div>\r\n\t\t\t<div>(.+)</div>");
 
             if (response == null || !confRegex.IsMatch(response))
             {
@@ -198,20 +210,29 @@ namespace SteamAuth
 
             MatchCollection confirmations = confRegex.Matches(response);
 
-            List<Confirmation> ret = new List<Confirmation>();
-            foreach (Match confirmation in confirmations)
-            {
-                if (confirmation.Groups.Count != 5) continue;
+            MatchCollection confirmationsDesc = confDescriptions.Matches(response);
 
-                if (!ulong.TryParse(confirmation.Groups[1].Value, out ulong confID) ||
-                    !ulong.TryParse(confirmation.Groups[2].Value, out ulong confKey) ||
-                    !int.TryParse(confirmation.Groups[3].Value, out int confType) ||
-                    !ulong.TryParse(confirmation.Groups[4].Value, out ulong confCreator))
+            List<Confirmation> ret = new List<Confirmation>();
+            for (int i = 0; i < confirmationsDesc.Count; i++)
+            {
+                if (confirmations[i].Groups.Count != 5) continue;
+                if (confirmationsDesc[i].Groups.Count != 4) continue;
+
+                if (!ulong.TryParse(confirmations[i].Groups[1].Value, out ulong confID) ||
+                    !ulong.TryParse(confirmations[i].Groups[2].Value, out ulong confKey) ||
+                    !int.TryParse(confirmations[i].Groups[3].Value, out int confType) ||
+                    !ulong.TryParse(confirmations[i].Groups[4].Value, out ulong confCreator))
                 {
                     continue;
                 }
 
-                ret.Add(new Confirmation(confID, confKey, confType, confCreator));
+                string confDescription = confirmationsDesc[i].Groups[1].Value;
+                string confReceiving = confirmationsDesc[i].Groups[2].Value;
+                string confTime = confirmationsDesc[i].Groups[3].Value;
+
+
+                ret.Add(new Confirmation(confID, confKey, confType, confCreator, confDescription, confReceiving, confTime));
+
             }
 
             return ret.ToArray();
